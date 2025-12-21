@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>FunTarget Spinner - Smooth Edition</title>
+    <style>
+        /* ================= CSS: Optimized for Performance ================= */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            color: #fff;
+            touch-action: none;
+        }
+
+        /* GPU Acceleration for smooth animations */
+        .game-app, .slider-container, canvas, .slides-inner {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000;
+        }
+
+        .stars {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            z-index: -1;
+            background: black;
+        }
+
+        .game-container-wrap {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            background: url('https://uploads.onecompiler.io/445tyzay6/447hgwnps/1000050466.jpg') center/cover;
+            padding-top: 2px;
+        }
+         
+        .game-app {
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.75);
+            max-width: 1300px;
+            width: 100%;
+            position: relative;
+        }
+
+        #cancelSpecific, #cancelAll {
+            position: absolute;
+            width: 70px;
+            height: 32px;
+            z-index: 1000;
+            font-size: 12px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #cancelSpecific { top: 210px; left: 10px; background: linear-gradient(180deg, #9c2b2b, #6a1a1a); }
+        #cancelAll { top: 200px; right: 10px; background: linear-gradient(180deg, #223b8b, #14255a); }
+
+        .top-row { display: flex; justify-content: space-between; padding: 5px; }
+        .panel { background: rgba(0,0,0,0.5); border-radius: 12px; padding: 5px; min-width: 150px; text-align: center; }
+        .panel .value { background: linear-gradient(90deg, #fff3b1, #ffd36a); color: #111; border-radius: 20px; font-weight: 800; font-size: 24px; padding: 4px; margin-top: 2px; }
+
+        .chip-container { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 5px; }
+        .chip { width: 45px; height: 45px; border-radius: 50%; border: 4px dashed rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; transition: transform 0.1s; }
+        .chip.active { border: 3px solid #ffd36a; transform: scale(1.15); box-shadow: 0 0 10px #ffd36a; }
+        .chip[data-amt="1"] { background: #ff5f6d; }
+        .chip[data-amt="10"] { background: #11998e; }
+        .chip[data-amt="100"] { background: #4568dc; }
+
+        .wheel-wrap { width: 380px; height: 300px; display: flex; align-items: center; justify-content: center; position: relative; }
+        canvas#wheel { width: 100%; height: 100%; }
+
+        .pointer-overlay {
+            position: absolute; top: -55px; left: 50%; transform: translateX(-50%);
+            width: 130px; height: 130px;
+            background: url('https://uploads.onecompiler.io/445tyzay6/447a3r3jd/1000038035.png') no-repeat center/contain;
+            z-index: 110;
+        }
+
+        .slider-container {
+            width: 115px; height: 85px; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); overflow: hidden; border-radius: 50%;
+            background: #000; z-index: 100;
+        }
+        .slides-inner { display: flex; width: 1000%; height: 100%; }
+        .slide-item { width: 10%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        .slide { width: 80%; height: 80%; object-fit: contain; }
+
+        .bet-row { display: flex; justify-content: center; width: 100%; margin-top: -20px; z-index: 500; }
+        .number-box { flex: 1; text-align: center; cursor: pointer; position: relative; }
+        .number-box .num {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(180deg, #fff3cf, #ffd36f);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-weight: 900; color: #1b1300; box-shadow: 0 0 0 8px #ffd36a;
+            transform: translateY(-15px);
+        }
+        .bet-placed {
+            position: absolute; left: 50%; transform: translateX(-50%); bottom: 45px;
+            padding: 1px 12px; border-radius: 10px; background: #ffd36a; color: #000;
+            font-weight: 800; font-size: 14px; display: none;
+        }
+
+        .status-bar { background: rgba(0,0,0,0.8); padding: 12px; text-align: center; font-weight: 800; font-size: 18px; color: #ffd36a; }
+
+        /* Jiggle animation without flickering */
+        .jiggle { animation: jiggleAni 0.1s infinite alternate; }
+        @keyframes jiggleAni { from { transform: translateX(-50%) rotate(-2deg); } to { transform: translateX(-50%) rotate(2deg); } }
+    </style>
+</head>
+
+<body>
+    <div class="game-container-wrap">
+        <div class="game-app">
+            <button id="cancelSpecific" onclick="cancelLastBet()">CANCEL</button>
+            <button id="cancelAll" onclick="cancelAllBets()">CLEAR</button>
+
+            <div class="top-row">
+                <div class="left-panels">
+                    <div class="panel"><h4>Coins</h4><div id="coins" class="value">0</div></div>
+                    <div class="panel"><h4>Time</h4><div id="time" class="value">60</div></div>
+                    <div class="chip-container">
+                        <div class="chip" data-amt="1" onclick="selectChip(1)">1</div>
+                        <div class="chip" data-amt="5" onclick="selectChip(5)">5</div>
+                        <div class="chip" data-amt="10" onclick="selectChip(10)">10</div>
+                    </div>
+                </div>
+
+                <div class="wheel-wrap">
+                    <div class="pointer-overlay" id="ptrOverlay"></div>
+                    <div class="slider-container">
+                        <div class="slides-inner" id="slider">
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447p69nev/1000052760.jpg"></div>
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447p5tvep/1000052761.jpg"></div>
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447p5tvep/1000052761.jpg"></div>
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447k2jy8e/1000050485.jpg"></div>
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447p5tvep/1000052761.jpg"></div>
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447k2jy8e/1000050486.jpg"></div>
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447k2jy8e/1000050485.jpg"></div>
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447k2jy8e/1000050484.jpg"></div>
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447k2jy8e/1000050486.jpg"></div>
+                            <div class="slide-item"><img class="slide" src="https://uploads.onecompiler.io/445tyzay6/447k2jy8e/1000050485.jpg"></div>
+                        </div>
+                    </div>
+                    <canvas id="wheel" width="600" height="600"></canvas>
+                </div>
+
+                <div class="right-panels">
+                    <div class="panel"><h4>Winner</h4><div id="winner" class="value">-</div></div>
+                    <div class="panel"><h4>History</h4><div id="last10" class="value" style="font-size:12px;">-</div></div>
+                    <div class="chip-container">
+                        <div class="chip" data-amt="100" onclick="selectChip(100)">100</div>
+                        <div class="chip" data-amt="500" onclick="selectChip(500)">500</div>
+                        <div class="chip" data-amt="1000" onclick="selectChip(1000)">1000</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bet-row" id="betRow"></div>
+            <div class="status-bar" id="gameStatus">LOADING...</div>
+        </div>
+    </div>
+
+    <audio id="clickSound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <script>
+        /* ================= FIREBASE ================= */
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-KabHNxU7PmQ3sARjqY7XrZ7LI5rSI8E",
+            authDomain: "funtop-453ec.firebaseapp.com",
+            databaseURL: "https://funtop-453ec-default-rtdb.firebaseio.com",
+            projectId: "funtop-453ec",
+            appId: "1:711635468186:web:3a8170c59cf9daa8c34423"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const UID = "TEST_USER_1";
+
+        /* ================= STATE ================= */
+        let state = {
+            coins: 0,
+            myBets: Array(10).fill(0),
+            selectedAmt: 10,
+            status: "",
+            isSpinning: false,
+            winner: -1
+        };
+
+        const wheelCanvas = document.getElementById('wheel');
+        const ctx = wheelCanvas.getContext('2d', { alpha: false }); // Better performance
+        const overlayImg = new Image();
+        overlayImg.src = 'https://uploads.onecompiler.io/445tyzay6/44789ygta/1000037218.png';
+
+        /* ================= UI INIT ================= */
+        const betRow = document.getElementById('betRow');
+        for(let i=0; i<10; i++) {
+            betRow.innerHTML += `
+                <div class="number-box" onclick="placeBet(${i})">
+                    <div class="num">${i}</div>
+                    <div class="bet-placed" id="bet-${i}">0</div>
+                </div>`;
+        }
+
+        function selectChip(amt) {
+            state.selectedAmt = amt;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.chip[data-amt="${amt}"]`)?.classList.add('active');
+        }
+
+        /* ================= CORE LOGIC ================= */
+        db.ref("users/"+UID+"/coins").on("value", s => {
+            state.coins = s.val() || 0;
+            document.getElementById('coins').innerText = state.coins;
+        });
+
+        const roundRef = db.ref("game/currentRound");
+        roundRef.on("value", snap => {
+            const data = snap.val();
+            if(!data) return;
+
+            const timeLeft = 60 - Math.floor((Date.now() - data.start)/1000);
+            document.getElementById('time').innerText = Math.max(0, timeLeft);
+
+            if(data.status === "BET") {
+                if(state.status !== "BET") resetGameUI();
+                state.status = "BET";
+                state.isSpinning = false;
+                document.getElementById('gameStatus').innerText = "PLACE YOUR BETS";
+            } else if(data.status === "RESULT") {
+                state.status = "RESULT";
+                document.getElementById('gameStatus').innerText = "WINNER: " + data.result;
+                if(!state.isSpinning) {
+                    runSmoothSpin(data.result);
+                    state.isSpinning = true;
+                }
+            }
+        });
+
+        function placeBet(n) {
+            if(state.status !== "BET" || state.coins < state.selectedAmt) return;
+            
+            db.ref("users/"+UID+"/coins").set(state.coins - state.selectedAmt);
+            db.ref("game/currentRound/bets/"+n).transaction(v => (v||0) + state.selectedAmt);
+            
+            state.myBets[n] += state.selectedAmt;
+            const el = document.getElementById(`bet-${n}`);
+            el.innerText = state.myBets[n];
+            el.style.display = "block";
+            document.getElementById('clickSound').play().catch(()=>{});
+        }
+
+        /* ================= SMOOTH ANIMATION ENGINE ================= */
+        function drawWheel(rot) {
+            const W = 600, R = 290;
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0,0,W,W);
+            ctx.save();
+            ctx.translate(300, 300);
+            ctx.rotate(rot);
+            for(let i=0; i<10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0,0);
+                ctx.arc(0,0, R, i*Math.PI*2/10, (i+1)*Math.PI*2/10);
+                ctx.fillStyle = i % 2 === 0 ? '#ffd36a' : '#fff3b0';
+                ctx.fill();
+            }
+            if(overlayImg.complete) ctx.drawImage(overlayImg, -295, -295, 590, 590);
+            ctx.restore();
+        }
+
+        function runSmoothSpin(winner) {
+            document.getElementById('ptrOverlay').classList.add('jiggle');
+            document.getElementById('winner').innerText = winner;
+
+            // Slider Animation
+            const slider = document.getElementById('slider');
+            slider.style.transition = "transform 7s cubic-bezier(0.15, 0, 0.15, 1)";
+            slider.style.transform = `translateX(${-(winner * 10)}%)`;
+
+            // Canvas Animation
+            const fullRots = Math.PI * 2 * 10;
+            const winnerOffset = (winner * Math.PI * 2 / 10) + (Math.PI / 10);
+            const targetRot = fullRots - winnerOffset;
+            
+            let start = null;
+            function step(timestamp) {
+                if(!start) start = timestamp;
+                const progress = (timestamp - start) / 7000; // 7 Seconds
+                if(progress < 1) {
+                    const eased = 1 - Math.pow(1 - progress, 3); // OutCubic
+                    drawWheel(targetRot * eased);
+                    requestAnimationFrame(step);
+                } else {
+                    drawWheel(targetRot);
+                    document.getElementById('ptrOverlay').classList.remove('jiggle');
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        function resetGameUI() {
+            state.myBets.fill(0);
+            for(let i=0; i<10; i++) document.getElementById(`bet-${i}`).style.display = "none";
+            document.getElementById('winner').innerText = "-";
+            document.getElementById('slider').style.transition = "none";
+            document.getElementById('slider').style.transform = "translateX(0)";
+            drawWheel(0);
+        }
+
+        // मास्टर टाइमर लॉजिक (यदि कोई सर्वर नहीं है)
+        setInterval(() => {
+            roundRef.once("value", snap => {
+                const d = snap.val();
+                if(!d) { 
+                    roundRef.set({ start: Date.now(), status: "BET", bets: {} });
+                } else if(Date.now() - d.start >= 60000 && d.status === "BET") {
+                    let min = Infinity, res = Math.floor(Math.random()*10);
+                    // Low bet logic
+                    for(let i=0; i<10; i++) {
+                        let v = d.bets && d.bets[i] ? d.bets[i] : 0;
+                        if(v < min) { min = v; res = i; }
+                    }
+                    roundRef.update({ status: "RESULT", result: res });
+                    setTimeout(() => {
+                        roundRef.set({ start: Date.now(), status: "BET", bets: {} });
+                    }, 8000);
+                }
+            });
+        }, 2000); // 2 सेकंड पर चेक करना काफी है
+
+        overlayImg.onload = () => drawWheel(0);
+        selectChip(10);
+    </script>
+</body>
+</html>
