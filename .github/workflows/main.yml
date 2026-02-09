@@ -1,4 +1,4 @@
-name: FunTargetPro Android Build (SIGNED APK)
+Name: FunTargetPro Android Build (SIGNED APK)
 
 on:
   push:
@@ -36,37 +36,54 @@ jobs:
 
       - name: Install NPM Dependencies
         run: |
-          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name package.json | head -n 1))
+          PACKAGE_PATH=$(find . -maxdepth 3 -name package.json | head -n 1)
+          if [ -z "$PACKAGE_PATH" ]; then
+            echo "Error: package.json not found!"
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$PACKAGE_PATH")
           echo "Project Dir: $PROJECT_DIR"
           cd "$PROJECT_DIR"
           npm install
 
       - name: Add Android Platform
         run: |
-          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name config.xml | head -n 1))
+          CONFIG_PATH=$(find . -maxdepth 3 -name config.xml | head -n 1)
+          if [ -z "$CONFIG_PATH" ]; then
+            echo "Error: config.xml not found!"
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$CONFIG_PATH")
           echo "Project Dir: $PROJECT_DIR"
           cd "$PROJECT_DIR"
           cordova platform add android@10.1.2
 
       - name: Build Unsigned Release APK
         run: |
-          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name config.xml | head -n 1))
+          CONFIG_PATH=$(find . -maxdepth 3 -name config.xml | head -n 1)
+          PROJECT_DIR=$(dirname "$CONFIG_PATH")
           echo "Project Dir: $PROJECT_DIR"
           cd "$PROJECT_DIR"
           cordova build android --release
 
       - name: Decode Keystore
         run: |
-          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name config.xml | head -n 1))
+          CONFIG_PATH=$(find . -maxdepth 3 -name config.xml | head -n 1)
+          PROJECT_DIR=$(dirname "$CONFIG_PATH")
           cd "$PROJECT_DIR"
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > funtarget.jks
 
       - name: Sign APK
         run: |
-          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name config.xml | head -n 1))
+          CONFIG_PATH=$(find . -maxdepth 3 -name config.xml | head -n 1)
+          PROJECT_DIR=$(dirname "$CONFIG_PATH")
           cd "$PROJECT_DIR"
 
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release/ -name "*-unsigned.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "Error: Unsigned APK not found!"
+            exit 1
+          fi
           echo "Unsigned APK: $APK_PATH"
 
           $ANDROID_HOME/build-tools/33.0.2/apksigner sign \
