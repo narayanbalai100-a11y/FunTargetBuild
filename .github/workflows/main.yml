@@ -9,12 +9,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: FunTargetPro
+
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
 
       - name: Show Folder Structure
-        run: ls -la
+        run: |
+          pwd
+          ls -la
+          ls -la FunTargetPro
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,10 +55,7 @@ jobs:
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release/ -name "*-unsigned.apk" | head -n 1)
           echo "Unsigned APK: $APK_PATH"
 
-          BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
-          echo "Using Build Tools: $BUILD_TOOLS"
-
-          $BUILD_TOOLS/apksigner sign \
+          $ANDROID_HOME/build-tools/33.0.2/apksigner sign \
             --ks funtarget.jks \
             --ks-pass pass:${{ secrets.KEYSTORE_PASS }} \
             --ks-key-alias ${{ secrets.KEY_ALIAS }} \
@@ -63,4 +67,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FunTargetPro-SIGNED-APK
-          path: FunTargetPro_Final_Signed.apk
+          path: FunTargetPro/FunTargetPro_Final_Signed.apk
