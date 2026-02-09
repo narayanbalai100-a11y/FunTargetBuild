@@ -13,13 +13,6 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      - name: Show Full Folder Structure
-        run: |
-          pwd
-          ls -la
-          find . -maxdepth 3 -type f -name "package.json"
-          find . -maxdepth 3 -type f -name "config.xml"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -36,55 +29,35 @@ jobs:
 
       - name: Install NPM Dependencies
         run: |
-          PACKAGE_PATH=$(find . -maxdepth 3 -name package.json | head -n 1)
-          if [ -z "$PACKAGE_PATH" ]; then
-            echo "Error: package.json not found!"
-            exit 1
-          fi
-          PROJECT_DIR=$(dirname "$PACKAGE_PATH")
-          echo "Project Dir: $PROJECT_DIR"
-          cd "$PROJECT_DIR"
+          cd FunTargetPro
           npm install
 
       - name: Add Android Platform
         run: |
-          CONFIG_PATH=$(find . -maxdepth 3 -name config.xml | head -n 1)
-          if [ -z "$CONFIG_PATH" ]; then
-            echo "Error: config.xml not found!"
-            exit 1
-          fi
-          PROJECT_DIR=$(dirname "$CONFIG_PATH")
-          echo "Project Dir: $PROJECT_DIR"
-          cd "$PROJECT_DIR"
+          cd FunTargetPro
           cordova platform add android@10.1.2
 
       - name: Build Unsigned Release APK
         run: |
-          CONFIG_PATH=$(find . -maxdepth 3 -name config.xml | head -n 1)
-          PROJECT_DIR=$(dirname "$CONFIG_PATH")
-          echo "Project Dir: $PROJECT_DIR"
-          cd "$PROJECT_DIR"
+          cd FunTargetPro
           cordova build android --release
 
       - name: Decode Keystore
         run: |
-          CONFIG_PATH=$(find . -maxdepth 3 -name config.xml | head -n 1)
-          PROJECT_DIR=$(dirname "$CONFIG_PATH")
-          cd "$PROJECT_DIR"
+          cd FunTargetPro
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > funtarget.jks
 
       - name: Sign APK
         run: |
-          CONFIG_PATH=$(find . -maxdepth 3 -name config.xml | head -n 1)
-          PROJECT_DIR=$(dirname "$CONFIG_PATH")
-          cd "$PROJECT_DIR"
-
+          cd FunTargetPro
+          
+          # सही पाथ पर APK ढूँढना
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release/ -name "*-unsigned.apk" | head -n 1)
+          
           if [ -z "$APK_PATH" ]; then
-            echo "Error: Unsigned APK not found!"
+            echo "APK not found!"
             exit 1
           fi
-          echo "Unsigned APK: $APK_PATH"
 
           $ANDROID_HOME/build-tools/33.0.2/apksigner sign \
             --ks funtarget.jks \
@@ -98,4 +71,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FunTargetPro-SIGNED-APK
-          path: "**/FunTargetPro_Final_Signed.apk"
+          path: "FunTargetPro/FunTargetPro_Final_Signed.apk"
