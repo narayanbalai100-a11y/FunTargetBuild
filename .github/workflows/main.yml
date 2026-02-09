@@ -1,4 +1,4 @@
-Name: FunTargetPro Android Build (SIGNED APK)
+name: FunTargetPro Android Build (SIGNED APK)
 
 on:
   push:
@@ -12,6 +12,13 @@ jobs:
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
+
+      - name: Show Full Folder Structure
+        run: |
+          pwd
+          ls -la
+          find . -maxdepth 3 -type f -name "package.json"
+          find . -maxdepth 3 -type f -name "config.xml"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,35 +36,38 @@ jobs:
 
       - name: Install NPM Dependencies
         run: |
-          cd FunTargetPro
+          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name package.json | head -n 1))
+          echo "Project Dir: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
           npm install
 
       - name: Add Android Platform
         run: |
-          cd FunTargetPro
+          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name config.xml | head -n 1))
+          echo "Project Dir: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
           cordova platform add android@10.1.2
 
       - name: Build Unsigned Release APK
         run: |
-          cd FunTargetPro
+          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name config.xml | head -n 1))
+          echo "Project Dir: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
           cordova build android --release
 
       - name: Decode Keystore
         run: |
-          cd FunTargetPro
+          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name config.xml | head -n 1))
+          cd "$PROJECT_DIR"
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > funtarget.jks
 
       - name: Sign APK
         run: |
-          cd FunTargetPro
-          
-          # सही पाथ पर APK ढूँढना
+          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name config.xml | head -n 1))
+          cd "$PROJECT_DIR"
+
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release/ -name "*-unsigned.apk" | head -n 1)
-          
-          if [ -z "$APK_PATH" ]; then
-            echo "APK not found!"
-            exit 1
-          fi
+          echo "Unsigned APK: $APK_PATH"
 
           $ANDROID_HOME/build-tools/33.0.2/apksigner sign \
             --ks funtarget.jks \
@@ -71,4 +81,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FunTargetPro-SIGNED-APK
-          path: "FunTargetPro/FunTargetPro_Final_Signed.apk"
+          path: "**/FunTargetPro_Final_Signed.apk"
