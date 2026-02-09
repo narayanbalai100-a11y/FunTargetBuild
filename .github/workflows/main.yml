@@ -27,34 +27,43 @@ jobs:
       - name: Install Cordova
         run: npm install -g cordova
 
+      # ✅ IMPORTANT: project folder set karo
       - name: Install NPM Dependencies
         run: npm install
+        working-directory: FunTargetPro
 
       - name: Add Android Platform
         run: cordova platform add android@10.1.2
+        working-directory: FunTargetPro
 
       - name: Build Unsigned Release APK
         run: cordova build android --release
+        working-directory: FunTargetPro
 
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > funtarget.jks
+        working-directory: FunTargetPro
 
       - name: Sign APK
         run: |
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release/ -name "*-unsigned.apk" | head -n 1)
           echo "Unsigned APK: $APK_PATH"
 
-          $ANDROID_HOME/build-tools/33.0.2/apksigner sign \
+          BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
+          echo "Using Build Tools: $BUILD_TOOLS"
+
+          $BUILD_TOOLS/apksigner sign \
             --ks funtarget.jks \
             --ks-pass pass:${{ secrets.KEYSTORE_PASS }} \
             --ks-key-alias ${{ secrets.KEY_ALIAS }} \
             --key-pass pass:${{ secrets.KEY_PASS }} \
             --out FunTargetPro_Final_Signed.apk \
             "$APK_PATH"
+        working-directory: FunTargetPro
 
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
           name: FunTargetPro-SIGNED-APK
-          path: FunTargetPro_Final_Signed.apk
+          path: FunTargetPro/FunTargetPro_Final_Signed.apk
