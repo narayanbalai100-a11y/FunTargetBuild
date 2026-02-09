@@ -13,6 +13,9 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
 
+      - name: Show Folder Structure
+        run: ls -la
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -27,23 +30,18 @@ jobs:
       - name: Install Cordova
         run: npm install -g cordova
 
-      # ✅ IMPORTANT: project folder set karo
       - name: Install NPM Dependencies
         run: npm install
-        working-directory: FunTargetPro
 
       - name: Add Android Platform
         run: cordova platform add android@10.1.2
-        working-directory: FunTargetPro
 
       - name: Build Unsigned Release APK
         run: cordova build android --release
-        working-directory: FunTargetPro
 
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > funtarget.jks
-        working-directory: FunTargetPro
 
       - name: Sign APK
         run: |
@@ -60,10 +58,9 @@ jobs:
             --key-pass pass:${{ secrets.KEY_PASS }} \
             --out FunTargetPro_Final_Signed.apk \
             "$APK_PATH"
-        working-directory: FunTargetPro
 
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
           name: FunTargetPro-SIGNED-APK
-          path: FunTargetPro/FunTargetPro_Final_Signed.apk
+          path: FunTargetPro_Final_Signed.apk
