@@ -18,10 +18,10 @@ jobs:
         with:  
           node-version: 18  
 
-      - name: Install Dependencies
+      - name: Install Project Dependencies
         run: |
-          # यह सुनिश्चित करता है कि आपके प्रोजेक्ट के सभी जरूरी पैकेज मौजूद हैं
           npm install
+          # यह पक्का करता है कि आपके सभी जरूरी फोल्डर्स और प्लगइन्स मौजूद हैं।
 
       - name: Install Cordova  
         run: npm install -g cordova  
@@ -35,23 +35,19 @@ jobs:
       - name: Install Android SDK  
         uses: android-actions/setup-android@v3  
 
-      - name: Prepare Assets
+      - name: Sync Resources and Assets
         run: |
-          # यह स्टेप सुनिश्चित करता है कि आपकी सभी इमेजेस, HTML और सब-फोल्डर्स तैयार हैं
-          # हम 'cordova prepare' का उपयोग करेंगे जो www फोल्डर की हर चीज को प्लेटफार्म में सिंक करता है
+          # यह स्टेप आपके www फोल्डर की हर इमेज, HTML और सब-फोल्डर को 
+          # Android प्लेटफार्म में कॉपी करता है ताकि एपीके अधूरा न रहे।
           cordova prepare android
 
       - name: Add Android Platform  
         run: |  
-          # अगर पहले से कोई प्लेटफार्म फोल्डर है तो उसे क्लीन करके नया बनाएंगे
-          # ताकि कोई पुरानी फाइल बिल्ड में रुकावट न डाले
-          cordova platform remove android --nosave || true
           cordova platform add android  
 
       - name: Build Debug APK  
         run: |  
-          # 'Full Build' के लिए हम इसे रन कर रहे हैं
-          # यह आपके सभी सब-फोल्डर्स (HTML, CSS, JS, Images) को APK में पैक कर देगा
+          # यहाँ आपका कंप्लीट एपीके (Complete APK) बनेगा
           cordova build android --debug  
 
       - name: Upload APK  
