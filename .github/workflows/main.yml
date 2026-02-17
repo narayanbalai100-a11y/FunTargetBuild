@@ -12,7 +12,7 @@ jobs:
     steps:  
       - name: Checkout repo  
         uses: actions/checkout@v4  
-        # यह आपके कोड के सभी फोल्डर्स और फाइलों को GitHub से लाता है
+        # यह आपके सभी फोल्डर्स (ब्लू फोल्डर्स), इमेजेस और HTML को GitHub से खींचता है।
 
       - name: Setup Node.js  
         uses: actions/setup-node@v4  
@@ -22,7 +22,7 @@ jobs:
       - name: Install Project Dependencies
         run: |
           npm install
-          # यह पक्का करता है कि आपके प्रोजेक्ट के अंदर के सभी प्लगइन्स और जरूरी फोल्डर्स मौजूद हैं।
+          # यह पक्का करता है कि आपके सभी प्लगइन्स और नोड फोल्डर्स पूरी तरह से लोड हों।
 
       - name: Install Cordova  
         run: npm install -g cordova  
@@ -36,27 +36,20 @@ jobs:
       - name: Install Android SDK  
         uses: android-actions/setup-android@v3  
 
-      - name: Add Android Platform  
-        run: |  
-          # अगर प्लेटफार्म पहले से है तो उसे रिफ्रेश करता है ताकि सब कुछ नया बिल्ड हो
-          cordova platform remove android --nosave || true
-          cordova platform add android  
-
-      - name: Prepare Resources and Folders
+      - name: Prepare Android Platform and Assets
         run: |
-          # यह सबसे जरूरी स्टेप है। यह आपके 'www' फोल्डर के अंदर के 
-          # सभी 'ब्लू फोल्डर्स', इमेजेस और HTML फाइल्स को एंड्रॉइड एसेट्स में सिंक करता है।
+          # यह स्टेप पक्का करता है कि आपकी हर एक इमेज और फाइल एंड्रॉइड फोल्डर में चली जाए।
+          cordova platform add android || true
           cordova prepare android
 
-      - name: Build Debug APK  
+      - name: Build Complete Debug APK  
         run: |  
-          # यहाँ आपका कंप्लीट एपीके (Complete APK) बनकर तैयार होगा
-          # इसमें आपकी हर एक फाइल शामिल होगी।
+          # यहाँ आपका पूरा का पूरा एपीके (Full APK) एक बार में बनेगा।
           cordova build android --debug  
 
-      - name: Provide APK to User
+      - name: Provide Final APK File
         uses: actions/upload-artifact@v4  
         with:  
           name: FunTarget-Complete-APK  
           path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
-          # यह स्टेप आपको GitHub Actions के 'Summary' टैब में डाउनलोड करने के लिए एपीके देगा।
+          # बिल्ड खत्म होने के बाद, आपको Actions टैब में यह 'Complete APK' मिल जाएगा।
